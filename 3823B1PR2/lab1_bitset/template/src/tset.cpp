@@ -121,27 +121,13 @@ TSet TSet::operator-(const int Elem) // разность с элементом
 
 TSet TSet::operator*(const TSet& s) // пересечение
 {
-    TSet t((MaxPower <= s.MaxPower ? *this : s));
-    const TSet &max = (MaxPower > s.MaxPower ? *this : s);
-    for (int i = 0; i < t.BitField.GetLength(); i++) {
-        if (!max.BitField.GetBit(i)) {
-            t.BitField.ClrBit(i);
-        }
-    }
+    TSet t(BitField & s.BitField);
     return t;
 }
 
 TSet TSet::operator~(void) // дополнение
 {
-    TSet t(*this);
-    for (int i = 0; i < t.MaxPower; i++) {
-        if (BitField.GetBit(i)) {
-            t.BitField.ClrBit(i);
-        }
-        else {
-            t.BitField.SetBit(i);
-        }
-    }
+    TSet t(~BitField);
     return t;
 }
 

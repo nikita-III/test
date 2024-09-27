@@ -14,6 +14,7 @@ TBitField::TBitField(int len)
 	}
 	if (len == 0) {
 		BitLen = MemLen = 0;
+		pMem = NULL;
 		return;
 	}
 	BitLen = len;
@@ -26,9 +27,6 @@ TBitField::TBitField(int len)
 
 TBitField::TBitField(const TBitField& bf) // конструктор копирования
 {
-	if (pMem != NULL)  {
-		delete[] pMem;
-	}
 	this->BitLen = bf.BitLen;
 	this->MemLen = bf.MemLen;
 	pMem = new TELEM[MemLen];
@@ -66,6 +64,9 @@ int TBitField::GetLength(void) const // получить длину (к-во б�
 
 void TBitField::SetBit(const int n) // установить бит
 {
+	if (n < 0 || n >= BitLen) {
+		throw "gg";
+	}
 	TELEM otstup = MemLen - (n / sizeof(TELEM)) - 1; // в какой ячейке справа надо искать бит
 	TELEM locPos = n % sizeof(TELEM); // позиция в ячейке - на неё будем сдвигать
 	pMem[otstup] |= 1<<locPos;
@@ -73,19 +74,22 @@ void TBitField::SetBit(const int n) // установить бит
 
 void TBitField::ClrBit(const int n) // очистить бит
 {
+	if (n < 0 || n >= BitLen) {
+		throw "gg";
+	}
 	TELEM otstup = MemLen - (n / sizeof(TELEM)) - 1; // в какой ячейке справа надо искать бит
 	TELEM locPos = n % sizeof(TELEM); // позиция в ячейке - на неё будем сдвигать
-	pMem[otstup] &= (TELEM(-1) - 1<<locPos);
+	pMem[otstup] &= (TELEM(-1) ^ 1<<locPos);
 }
 
 int TBitField::GetBit(const int n) const // получить значение бита
 {
-	if (n >= BitLen) {
-		return -1;
+	if (n < 0 || n >= BitLen) {
+		throw "gg";
 	}
 	TELEM otstup = MemLen - (n / sizeof(TELEM)) - 1; // в какой ячейке справа надо искать бит
 	TELEM locPos = n % sizeof(TELEM); // позиция в ячейке - на неё будем сдвигать
-	return pMem[otstup] & 1<<locPos;
+	return ((pMem[otstup] & 1<<locPos) != 0);
 }
 
 // битовые операции
@@ -209,13 +213,11 @@ int TBitField::operator!=(const TBitField& bf) const // сравнение
 	return ans;
 }
 
-//refactor
-
 TBitField TBitField::operator|(const TBitField& bf) // операция "или"
 {
 	const TBitField &min = (this->BitLen < bf.GetLength() ? *this : bf ), &max = (this->BitLen >= bf.GetLength() ? *this : bf );
 	TBitField buf(max);
-	TELEM i = 0;
+	int i = 0;
 	while (i < min.MemLen) {
 		buf.pMem[max.MemLen - i - 1] = max.pMem[max.MemLen - i - 1] | min.pMem[min.MemLen - i - 1];
 		i++;
@@ -225,9 +227,9 @@ TBitField TBitField::operator|(const TBitField& bf) // операция "или"
 
 TBitField TBitField::operator&(const TBitField& bf) // операция "и"
 {
-	const TBitField &min = (this->BitLen < bf.GetLength() ? *this : bf ), &max = (this->BitLen >= bf.GetLength() ? *this : bf );
+	const TBitField &min = (this->BitLen < bf.BitLen ? *this : bf ), &max = (this->BitLen >= bf.BitLen ? *this : bf );
 	TBitField buf(max.BitLen);
-	TELEM i = 0;
+	int i = 0;
 	while (i < min.MemLen) {
 		buf.pMem[max.MemLen - i - 1] = max.pMem[max.MemLen - i - 1] & min.pMem[min.MemLen - i - 1];
 		i++;
@@ -237,9 +239,14 @@ TBitField TBitField::operator&(const TBitField& bf) // операция "и"
 
 TBitField TBitField::operator~(void) // отрицание
 {
-	TBitField buf(this->BitLen);
-	for (TELEM i = 0; i < this->MemLen; i++) {
-		buf.pMem[i] = this->pMem[i] ^ TELEM(-1);
+	TBitField buf(*this);
+	for (int i = 0; i < BitLen; i++) {
+		if (GetBit(i)) {
+			buf.ClrBit(i);
+		}
+		else {
+			buf.SetBit(i);
+		}
 	}
 	return buf;
 }
